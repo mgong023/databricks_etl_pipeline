@@ -1,0 +1,35 @@
+{
+    "num_workers": 0,
+    "cluster_name": "<name>",
+    "spark_version": "9.1.x-scala2.12",
+    "spark_conf": {
+       "spark.hadoop.fs.azure.account.key.sasprvdatalakeadpaweu01.dfs.core.windows.net": "dDT7U0CI7X9UGn6x7I8lk/e6VhcRIpEBtLXoQeB3y0USIb0+Z3I/9oSMahxwEi6aWgiegd6SIAGy4DnwKSnWww==",
+        "spark.hadoop.fs.azure.account.key.sasprvdatalakeadppweu01.dfs.core.windows.net": "iLfRoY2ZhaG3JAhI254fUG+IjmbkOLgE6KgC/14DlKnMJHuxpbTPuuyHKk6FRguDr3sX1dARs96o+ASt5pvYEg==",
+        "spark.databricks.cluster.profile": "singleNode",
+        "spark.hadoop.fs.azure.account.key.sasprvdatalakeadpdweu01.dfs.core.windows.net": "3u8A1d43QVrzlwIjGxxK/98FU5Exa9Fj5zAZCxhIf1+sHpofxdqOdInQ97dl4odfVOuR9d/eMgAu4OmihkJltA==",
+        "spark.master": "local[*, 4]",
+        "spark.databricks.delta.preview.enabled": "true",
+        "spark.hadoop.fs.azure.account.key.stdevnbbadpdatalake001.dfs.core.windows.net": "+7AZEIWZQvJwrJ3pvK6J9fKNXsTGpMhoH2Now3YBMJ4FEXjga4UrzWdNPw3ljsulk/UXJIofHWwqDhwCyfVNfA=="
+    },
+    "azure_attributes": {
+        "first_on_demand": 1,
+        "availability": "ON_DEMAND_AZURE",
+        "spot_bid_max_price": -1
+    },
+    "node_type_id": "Standard_D16s_v3",
+    "driver_node_type_id": "Standard_D16s_v3",
+    "ssh_public_keys": [],
+    "custom_tags": {
+        "ResourceClass": "SingleNode"
+    },
+    "spark_env_vars": {
+        "PYSPARK_PYTHON": "/databricks/python3/bin/python3",
+        "SA_NBB_INFDBR_P__SQPROB2H": "{{secrets/kv-prdata-adp-xxx-weu-01/SA-NBB-INFDBR-P-SQPROB2H}}"
+    },
+    "autotermination_minutes": 120,
+    "enable_elastic_disk": true,
+    "cluster_source": "UI",
+    "init_scripts": [],
+    "runtime_engine": "STANDARD",
+    "cluster_id": "0720-115637-61u2mvn8"
+}
