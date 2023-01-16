@@ -15,6 +15,12 @@ from datetime import date, timedelta, datetime
 
 # COMMAND ----------
 
+# Load pipeline config
+with open(os.getcwd() + '/../config/config.yaml') as f:
+    pipe_conf = yaml.load(f, Loader=yaml.FullLoader)
+
+# COMMAND ----------
+
 def sql_string_cleaner(query: str, remove_null=False):
     clean_string = query.replace('[', '').replace(']', '').replace('"', '').replace('+', '||')
     if remove_null is True:
@@ -115,8 +121,6 @@ def ingestion_date_check(database: str,tables_to_exclude:list):
         for row in dftbls.rdd.collect():
             if row['tableName'] in tables_to_exclude:
                 continue
-            if row['tableName'] =='igarolemodel':
-                tmp = f"select file_date from {row['database']}.{row['tableName']} where to_date(file_date) = date_sub(CURRENT_DATE, 1) limit 1"
             else:
                 tmp = f"select file_date from {row['database']}.{row['tableName']} where to_date(file_date) = CURRENT_DATE limit 1"  
             tmpdf = sqlContext.sql(tmp).collect()[0]['file_date']
@@ -186,7 +190,7 @@ def upsert(target_table, source_table, merge_condition):
 # COMMAND ----------
 
 def generate_row_number(id_column_name: str, table: str):
-    df = spark.table(f'{l3_db}.{table}')
+    df = spark.table(f"{pipe_conf['l3_db']}.{table}")
     w = Window().partitionBy(id_column_name).orderBy(lit('A'))
     df = df.withColumn(id_column_name, row_number().over(w))
-    df.write.mode("overwrite").saveAsTable(f"{l3_db}.{table}")
+    df.write.mode("overwrite").saveAsTable(f"{pipe_conf['l3_db']}.{table}")
