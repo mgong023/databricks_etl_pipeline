@@ -49,47 +49,30 @@ def retrieve_sql_on_prem_data(db_name: str, table_name: str):
 
 # COMMAND ----------
 
-def create_history_table(target_table: str, source_table: str, merge_condition: str, matched_condition: str, soft_delete=False, hard_delete=False):
-    source_df = spark.table(source_table)
-    source_df = source_df.withColumn("VERSION_START", current_date())
-    source_df = source_df.withColumn("VERSION_END", to_date(lit('9999-12-31'), "yyyy-MM-dd"))
-    source_df = source_df.withColumn("VERSION_LATEST", lit(1))
-    if soft_delete:
-        source_df = source_df.withColumn("IS_ACTIVE", lit(-1))
-    source_df.createOrReplaceTempView('SOURCE')
-
-    print("Running upsert...")
+def history_scd2(target_table: str, source_table: str, key_columns: list, columns_changed: list, soft_delete=False):
+    merge_condition = ''.join(f'TARGET.{key} = SOURCE.{key} AND ' for key in key_columns)[:-5]
+    columns_changed_str = ''.join(f'TARGET.{key} <> SOURCE.{key} OR ' for key in columns_changed)[:-4]
+    matched_condition = modify_matched_condition_scd2(target_table, source_table, columns_changed_str)
+    spark.sql(f"CREATE OR REPLACE TEMP VIEW SOURCE AS SELECT -1 AS ID, *, current_date() AS VERSION_START, null AS VERSION_END FROM {source_table}")
     spark.sql(f"""
         MERGE INTO {target_table} TARGET
         USING SOURCE
         ON ({merge_condition})
-        --When records are matched, update the records if there is any change
-        WHEN MATCHED AND ({matched_condition})
-        THEN UPDATE SET TARGET.VERSION_LATEST = 0
-        --When no records are matched, insert the incoming records from source table to target table
+        WHEN MATCHED AND ({matched_condition}) AND TARGET.VERSION_END is null
+        THEN UPDATE SET TARGET.VERSION_END = current_date()
     """)
     spark.sql(f"""
         INSERT INTO {target_table}
         SELECT * FROM SOURCE WHERE NOT EXISTS(SELECT 1 FROM {target_table} WHERE NOT ({matched_condition.replace('TARGET', target_table)}))
     """)    
     if soft_delete:
-        print("Running soft delete...")
-        spark.sql(f"UPDATE {target_table} SET IS_ACTIVE = 1")
         spark.sql(f"""
-            UPDATE {target_table} TARGET SET IS_ACTIVE = 0, VERSION_END = CURRENT_DATE()
+            UPDATE {target_table} TARGET SET VERSION_END = '1000-12-31'
             WHERE NOT EXISTS(SELECT * FROM SOURCE WHERE ({merge_condition}))
         """)
-    elif hard_delete:
-        print("Running hard delete...")
-        spark.sql(f"""
-            DELETE FROM {target_table} TARGET WHERE NOT EXISTS(SELECT * FROM SOURCE WHERE ({merge_condition}))
-        """)
-    spark.sql(f"UPDATE {target_table} SET VERSION_END = current_date WHERE (VERSION_END = '9999-12-31' AND VERSION_LATEST = 0)")
-    print('Finished')
+    print(f'Finished historizing {target_table}')
 
-# COMMAND ----------
-
-def modify_matched_condition(target_table: str, source_table: str, matched_condition: str):
+def modify_matched_condition_scd2(target_table: str, source_table: str, matched_condition: str):
     target = re.findall(r'TARGET.\w+', matched_condition)
     source = re.findall(r'SOURCE.\w+', matched_condition)
     target_types = dict(spark.table(target_table).dtypes)
@@ -106,8 +89,7 @@ def modify_matched_condition(target_table: str, source_table: str, matched_condi
         if t_type == 'string' and s_type == 'string':
             res = "''"
         # create the null handling string
-        substring = f"(coalesce({t}, {res}) <> coalesce({s}, {res}))"
-        string += substring + " OR "
+        string += f"(coalesce({t}, {res}) <> coalesce({s}, {res})) OR "
     return string[:-4] # remove last 'OR'
 
 # COMMAND ----------
@@ -190,7 +172,7 @@ def upsert(target_table, source_table, merge_condition):
 # COMMAND ----------
 
 def generate_row_number(id_column_name: str, table: str):
-    df = spark.table(f"{pipe_conf['l3_db']}.{table}")
+    df = spark.table(table)
     w = Window().partitionBy(id_column_name).orderBy(lit('A'))
     df = df.withColumn(id_column_name, row_number().over(w))
-    df.write.mode("overwrite").saveAsTable(f"{pipe_conf['l3_db']}.{table}")
+    df.write.mode("overwrite").saveAsTable(table)

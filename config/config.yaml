@@ -6,11 +6,5 @@ VolumeCheck: true
 PctVariation_Tolerance: <float>
 
 refresh_db: false
-refresh_tables: # if no tables to truncate, put: -
-  -
-
-tables:
-  <table1_name>:
-    columns:
-      <column1_name: <type>
-    on_prem: <on_prem_name>
+refresh_tables: # if no tables to truncate, put: - ''
+  - ''
